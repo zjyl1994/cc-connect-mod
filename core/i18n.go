@@ -231,6 +231,8 @@ const (
 	MsgQuietGlobalOn             MsgKey = "quiet_global_on"
 	MsgQuietGlobalOff            MsgKey = "quiet_global_off"
 	MsgModeChanged               MsgKey = "mode_changed"
+	MsgModeAutoReviewName        MsgKey = "mode_auto_review_name"
+	MsgModeAutoReviewDesc        MsgKey = "mode_auto_review_desc"
 	MsgModeNotSupported          MsgKey = "mode_not_supported"
 	MsgSessionRestarting         MsgKey = "session_restarting"
 	MsgSessionNotStarted         MsgKey = "session_not_started"
@@ -973,6 +975,20 @@ var messages = map[MsgKey]map[Language]string{
 		LangTraditionalChinese: "🔄 權限模式已切換為 **%s**，新會話將使用此模式。",
 		LangJapanese:           "🔄 権限モードを **%s** に切り替えました。新しいセッションで有効になります。",
 		LangSpanish:            "🔄 Modo de permisos cambiado a **%s**. Las nuevas sesiones usarán este modo.",
+	},
+	MsgModeAutoReviewName: {
+		LangEnglish:            "Auto Review",
+		LangChinese:            "自动审查",
+		LangTraditionalChinese: "自動審查",
+		LangJapanese:           "自動レビュー",
+		LangSpanish:            "Revisión automática",
+	},
+	MsgModeAutoReviewDesc: {
+		LangEnglish:            "Workspace-write sandbox; escalation requests are reviewed automatically",
+		LangChinese:            "工作区可写沙箱，提权请求由自动审查器审批",
+		LangTraditionalChinese: "工作區可寫沙箱，提權請求由自動審查器審批",
+		LangJapanese:           "ワークスペース書き込み可能なサンドボックス。権限昇格の要求を自動で審査",
+		LangSpanish:            "Sandbox con escritura en el espacio de trabajo; las solicitudes de permisos elevados se revisan automáticamente",
 	},
 	MsgModeNotSupported: {
 		LangEnglish:            "This agent does not support permission mode switching.",

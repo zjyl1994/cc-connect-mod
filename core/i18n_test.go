@@ -59,7 +59,7 @@ func TestI18n_AllKeysHaveEnglish(t *testing.T) {
 
 func TestDetectLanguage(t *testing.T) {
 	tests := []struct {
-		text    string
+		text     string
 		wantLang Language
 	}{
 		// Japanese Hiragana
@@ -165,5 +165,17 @@ func TestIsJapanese(t *testing.T) {
 	}
 	if isJapanese('a') {
 		t.Error("ASCII 'a' should not be Japanese")
+	}
+}
+
+func TestAutoReviewMode_AllTranslations(t *testing.T) {
+	for _, key := range []MsgKey{MsgModeAutoReviewName, MsgModeAutoReviewDesc} {
+		for _, lang := range []Language{LangEnglish, LangChinese, LangTraditionalChinese, LangJapanese, LangSpanish} {
+			t.Run(string(key)+"/"+string(lang), func(t *testing.T) {
+				if messages[key][lang] == "" {
+					t.Fatalf("missing %s translation for %s", key, lang)
+				}
+			})
+		}
 	}
 }

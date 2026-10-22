@@ -393,6 +393,7 @@ func (s *appServerSession) threadRequestParams() map[string]any {
 	}
 	if approval, sandbox := appServerModeSettings(s.mode); approval != "" {
 		params["approvalPolicy"] = approval
+		params["approvalsReviewer"] = appServerApprovalsReviewer(s.mode)
 		if sandbox != "" {
 			params["sandbox"] = sandbox
 		}
@@ -402,6 +403,8 @@ func (s *appServerSession) threadRequestParams() map[string]any {
 
 func appServerModeSettings(mode string) (approval string, sandbox string) {
 	switch normalizeMode(mode) {
+	case "auto-review":
+		return "on-request", "workspace-write"
 	case "auto-edit", "full-auto":
 		return "never", "workspace-write"
 	case "yolo":
@@ -409,6 +412,13 @@ func appServerModeSettings(mode string) (approval string, sandbox string) {
 	default:
 		return "on-request", "read-only"
 	}
+}
+
+func appServerApprovalsReviewer(mode string) string {
+	if normalizeMode(mode) == "auto-review" {
+		return "auto_review"
+	}
+	return "user"
 }
 
 func (s *appServerSession) applyThreadRuntimeState(workDir, model string, effort *string) {
@@ -523,6 +533,7 @@ func (s *appServerSession) Send(prompt string, messageID string, images []core.I
 	}
 	if approval, _ := appServerModeSettings(s.mode); approval != "" {
 		params["approvalPolicy"] = approval
+		params["approvalsReviewer"] = appServerApprovalsReviewer(s.mode)
 	}
 
 	var resp turnStartResponse

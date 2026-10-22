@@ -31,12 +31,13 @@ func init() {
 //   - "suggest":   --sandbox read-only       + approval_policy=never (no prompts)
 //   - "auto-edit": --sandbox workspace-write + approval_policy=never (alias of full-auto)
 //   - "full-auto": --sandbox workspace-write + approval_policy=never
+//   - "auto-review": workspace-write + on-request + native automatic reviewer
 //   - "yolo":      --dangerously-bypass-approvals-and-sandbox
 type Agent struct {
 	workDir         string
 	model           string
 	reasoningEffort string
-	mode            string // "suggest" | "auto-edit" | "full-auto" | "yolo"
+	mode            string // "suggest" | "auto-edit" | "full-auto" | "auto-review" | "yolo"
 	backend         string // "exec" | "app_server"
 	appServerURL    string
 	codexHome       string
@@ -137,6 +138,8 @@ func normalizeAppServerURL(raw string) string {
 
 func normalizeMode(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "auto-review", "autoreview", "auto_review", "approve-for-me":
+		return "auto-review"
 	case "auto-edit", "autoedit", "auto_edit", "edit":
 		return "auto-edit"
 	case "full-auto", "fullauto", "full_auto", "auto":
@@ -820,10 +823,10 @@ func (a *Agent) activeProviderCodexConfig() (name string, apiKey string, wireAPI
 // PermissionModes returns the supported codex permission modes.
 //
 // Behavior depends on backend:
-//   - exec backend (default): codex exec has no approval IPC, so all modes run
-//     with approval_policy=never. Sandbox tier is what controls access. The
-//     "suggest" label refers to the *intent* (read-only safety) — the CLI does
-//     not pop interactive approval prompts on this backend.
+//   - exec backend (default): codex exec has no human approval IPC, so modes
+//     other than auto-review run with approval_policy=never. Sandbox tier
+//     controls access. The "suggest" label refers to read-only safety; the
+//     CLI does not pop interactive approval prompts on this backend.
 //   - app_server backend: "suggest" enables real interactive approval requests
 //     (execCommandApproval / applyPatchApproval / permissionsApproval).
 //
@@ -841,6 +844,7 @@ func (a *Agent) PermissionModes() []core.PermissionModeInfo {
 		{Key: "full-auto", Name: "Full Auto", NameZh: "全自动",
 			Desc:   "Workspace-write sandbox, no approval prompts",
 			DescZh: "工作区可写沙箱，不弹审批"},
+		{Key: "auto-review", NameKey: core.MsgModeAutoReviewName, DescKey: core.MsgModeAutoReviewDesc},
 		{Key: "yolo", Name: "YOLO", NameZh: "YOLO 模式",
 			Desc:   "Bypass all approvals and sandbox (DANGEROUS)",
 			DescZh: "跳过所有审批和沙箱（危险）"},

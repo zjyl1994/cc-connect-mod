@@ -16727,3 +16727,18 @@ func TestProcessInteractiveEvents_StreamingCard_BareNoReply_Suppressed(t *testin
 		t.Fatalf("silent reply leaked NO_REPLY into the streaming card: %q", card.finalContent())
 	}
 }
+
+func TestRenderModeCard_TranslatedModeMetadata(t *testing.T) {
+	for _, lang := range []Language{LangEnglish, LangChinese, LangTraditionalChinese, LangJapanese, LangSpanish} {
+		t.Run(string(lang), func(t *testing.T) {
+			a := &cujTranslatedModeAgent{}
+			a.SetMode("auto-review")
+			e := NewEngine("test", a, nil, "", lang)
+			text := e.renderModeCard().RenderText()
+			name := e.i18n.T(MsgModeAutoReviewName)
+			if !strings.Contains(text, "▶ **"+name+"**") || !strings.Contains(text, e.i18n.T(MsgModeAutoReviewDesc)) {
+				t.Fatalf("mode card is missing translated metadata: %q", text)
+			}
+		})
+	}
+}

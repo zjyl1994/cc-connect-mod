@@ -1699,13 +1699,21 @@ app_secret = "your-feishu-app-secret"
 #
 # [projects.agent.options]
 # work_dir = "/path/to/project"
-# mode = "suggest"  # "suggest" | "auto-edit" | "full-auto" | "yolo"
+# mode = "suggest"  # "suggest" | "auto-edit" | "full-auto" | "auto-review" | "yolo"
 #
 # Mode options / 模式说明:
-# - "suggest":   ask permission for every tool call (default, safest) / 每次调用都需确认（默认，最安全）
-# - "auto-edit": auto-approve file edits, ask for shell commands / 文件编辑自动通过，Shell 命令仍需确认
-# - "full-auto": auto-approve everything with workspace sandbox / 全部自动通过，工作区沙箱保护
+# - "suggest":   read-only sandbox; app_server asks for escalation, exec cannot escalate / 只读沙箱；app_server 可请求提权，exec 不可提权
+# - "auto-edit": workspace-write sandbox, no escalation (alias of full-auto) / 工作区可写，不可提权（等同于 full-auto）
+# - "full-auto": workspace-write sandbox, no escalation / 工作区可写，不可提权
+# - "auto-review": workspace-write sandbox with native Codex automatic approval review / 工作区可写，提权由 Codex 原生自动审查器审批
 # - "yolo":      bypass all approvals and sandbox (dangerous) / 跳过所有审批和沙箱（危险）
+#
+# Enable native auto-review with either backend (requires a current Codex CLI):
+# 两种后端均支持原生自动审查（需使用新版 Codex CLI）：
+# backend = "app_server"  # "exec" (default) | "app_server"
+# mode = "auto-review"
+# You can also switch in chat with /mode auto-review.
+# 也可在聊天中发送 /mode auto-review 切换。
 #
 # Optional: specify a model / 可选：指定模型
 # model = "o3"

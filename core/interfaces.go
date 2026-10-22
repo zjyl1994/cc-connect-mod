@@ -641,11 +641,35 @@ type StartupWarner interface {
 
 // PermissionModeInfo describes a permission mode for display.
 type PermissionModeInfo struct {
-	Key    string
-	Name   string
-	NameZh string
-	Desc   string
-	DescZh string
+	Key     string
+	Name    string
+	NameZh  string
+	Desc    string
+	DescZh  string
+	NameKey MsgKey // Optional translations, preferred over Name/NameZh.
+	DescKey MsgKey // Optional translations, preferred over Desc/DescZh.
+}
+
+// LocalizedName uses a translation key or the legacy English/Chinese fields.
+func (m PermissionModeInfo) LocalizedName(i18n *I18n) string {
+	if m.NameKey != "" {
+		return i18n.T(m.NameKey)
+	}
+	if i18n.IsZhLike() {
+		return m.NameZh
+	}
+	return m.Name
+}
+
+// LocalizedDescription uses a translation key or the legacy English/Chinese fields.
+func (m PermissionModeInfo) LocalizedDescription(i18n *I18n) string {
+	if m.DescKey != "" {
+		return i18n.T(m.DescKey)
+	}
+	if i18n.IsZhLike() {
+		return m.DescZh
+	}
+	return m.Desc
 }
 
 // BotCommandInfo represents a command for bot menu registration (e.g. Telegram setMyCommands).

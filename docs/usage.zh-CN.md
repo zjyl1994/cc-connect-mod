@@ -86,10 +86,21 @@ reset_on_idle_mins = 60
 
 | 模式 | 配置值 | 行为 |
 |------|--------|------|
-| 建议 | `suggest` | 仅受信命令自动执行 |
-| 自动编辑 | `auto-edit` | 模型自行决定 |
-| 全自动 | `full-auto` | 自动通过 + 沙箱保护 |
+| 建议 | `suggest` | 只读沙箱；app_server 可请求人工提权，exec 不可提权 |
+| 自动编辑 | `auto-edit` | 工作区可写，不可提权（等同于 full-auto） |
+| 全自动 | `full-auto` | 工作区可写，不可提权 |
+| 自动审查 | `auto-review` | 工作区可写，提权请求由 Codex 原生 reviewer 审批 |
 | YOLO | `yolo` | 跳过所有审批 |
+
+使用新版 Codex CLI 开启原生自动审查：
+
+```toml
+[projects.agent.options]
+backend = "app_server" # 也支持默认的 "exec"
+mode = "auto-review"
+```
+
+重启 cc-connect 后生效，也可在飞书等聊天平台发送 `/mode auto-review`，后续请求将使用该模式。新建、恢复会话和后续轮次均使用 `workspace-write` 沙箱、`on-request` 审批策略及 `auto_review` reviewer。沙箱内允许的操作直接执行，需要提权的操作交给 Codex 自动审查；审查器可以拒绝请求。
 
 ### macOS 上的 Codex CLI 查找
 

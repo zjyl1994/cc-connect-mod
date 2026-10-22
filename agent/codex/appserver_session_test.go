@@ -505,17 +505,17 @@ func waitForWrittenJSONLine(t *testing.T, w *lockedWriteCloser) string {
 
 func TestAppServerListenURL(t *testing.T) {
 	cases := map[string]string{
-		"":                       "",
-		"  ":                     "",
-		"stdio://":               "",
-		"stdio":                  "",
-		"ws://127.0.0.1:3845":    "ws://127.0.0.1:3845",
-		"ws://localhost:9000":    "ws://localhost:9000",
-		"ws://127.0.0.1:3845 ":   "ws://127.0.0.1:3845",
-		" stdio ":                 "",
-		" stdio:// ":               "",
-		"STDIO":                    "",
-		"STDIO://":                 "",
+		"":                     "",
+		"  ":                   "",
+		"stdio://":             "",
+		"stdio":                "",
+		"ws://127.0.0.1:3845":  "ws://127.0.0.1:3845",
+		"ws://localhost:9000":  "ws://localhost:9000",
+		"ws://127.0.0.1:3845 ": "ws://127.0.0.1:3845",
+		" stdio ":              "",
+		" stdio:// ":           "",
+		"STDIO":                "",
+		"STDIO://":             "",
 	}
 	for in, want := range cases {
 		if got := appServerListenURL(in); got != want {
@@ -523,3 +523,82 @@ func TestAppServerListenURL(t *testing.T) {
 		}
 	}
 }
+
+// Exercise the actual RPCs so resume or a later turn cannot silently restore
+// approval_policy=never or inherit a different reviewer from the user's config.
+func TestAppServerSession_AutoReviewAcrossThreadAndTurns(t *testing.T) {
+	for _, resumeID := range []string{"", "thread-existing"} {
+		name := "new"
+		if resumeID != "" {
+			name = "resume"
+		}
+		t.Run(name, func(t *testing.T) {
+			s := &appServerSession{ctx: context.Background(), mode: "auto-review"}
+			s.alive.Store(true)
+			requests := make(chan autoReviewRPCRequest, 3)
+			s.stdin = &autoReviewRPCWriter{session: s, requests: requests}
+			if err := s.ensureThread(resumeID); err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				if err := s.Send("continue", "", nil, nil); err != nil {
+					t.Fatal(err)
+				}
+			}
+			threadMethod := "thread/start"
+			if resumeID != "" {
+				threadMethod = "thread/resume"
+			}
+			for i, method := range []string{threadMethod, "turn/start", "turn/start"} {
+				req := <-requests
+				if req.Method != method {
+					t.Fatalf("request %d method = %s, want %s", i, req.Method, method)
+				}
+				if req.Params["approvalPolicy"] != "on-request" || req.Params["approvalsReviewer"] != "auto_review" {
+					t.Fatalf("%s lost automatic review: %v", method, req.Params)
+				}
+				if i == 0 && req.Params["sandbox"] != "workspace-write" {
+					t.Fatalf("thread sandbox = %v", req.Params["sandbox"])
+				}
+				if method == "thread/resume" && req.Params["threadId"] != resumeID {
+					t.Fatalf("resume thread = %v, want %s", req.Params["threadId"], resumeID)
+				}
+			}
+		})
+	}
+}
+
+func TestAppServerSession_ManualModesSelectUserReviewer(t *testing.T) {
+	for _, mode := range []string{"suggest", "auto-edit", "full-auto", "yolo"} {
+		t.Run(mode, func(t *testing.T) {
+			s := &appServerSession{mode: mode}
+			if got := s.threadRequestParams()["approvalsReviewer"]; got != "user" {
+				t.Fatalf("manual mode inherited automatic review: %v", got)
+			}
+		})
+	}
+}
+
+type autoReviewRPCRequest struct {
+	ID     int64          `json:"id"`
+	Method string         `json:"method"`
+	Params map[string]any `json:"params"`
+}
+
+type autoReviewRPCWriter struct {
+	session  *appServerSession
+	requests chan autoReviewRPCRequest
+}
+
+func (w *autoReviewRPCWriter) Write(data []byte) (int, error) {
+	var req autoReviewRPCRequest
+	if err := json.Unmarshal(data, &req); err != nil {
+		return 0, err
+	}
+	w.requests <- req
+	result := json.RawMessage(`{"thread":{"id":"thread-test"},"turn":{"id":"turn-test"}}`)
+	w.session.handleResponse(rpcResponseEnvelope{ID: req.ID, Result: result})
+	return len(data), nil
+}
+
+func (w *autoReviewRPCWriter) Close() error { return nil }

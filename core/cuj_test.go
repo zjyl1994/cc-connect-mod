@@ -2592,3 +2592,51 @@ func TestCUJ_H5_WorkspaceSkillDiscoveryAndInvocation(t *testing.T) {
 	sent := p.getSent()
 	assertWorkspaceSkills(t, sent[len(sent)-1], "b", "a")
 }
+
+// This agent exposes translated permission metadata through the same optional
+// interface as real agents, without importing any adapter into core.
+type cujTranslatedModeAgent struct {
+	stubModelModeAgent
+}
+
+func (a *cujTranslatedModeAgent) PermissionModes() []PermissionModeInfo {
+	return append(a.stubModelModeAgent.PermissionModes(), PermissionModeInfo{
+		Key: "auto-review", NameKey: MsgModeAutoReviewName, DescKey: MsgModeAutoReviewDesc,
+	})
+}
+
+func TestCUJ_C6_TranslatedModeListSwitchAndList(t *testing.T) {
+	for _, lang := range []Language{LangEnglish, LangChinese, LangTraditionalChinese, LangJapanese, LangSpanish} {
+		t.Run(string(lang), func(t *testing.T) {
+			env := newCUJEnv(t)
+			env.engine.agent = &cujTranslatedModeAgent{}
+			env.engine.i18n.SetLang(lang)
+			name := env.engine.i18n.T(MsgModeAutoReviewName)
+			desc := env.engine.i18n.T(MsgModeAutoReviewDesc)
+
+			// User action 1: discover the translated mode in the menu.
+			env.userSends("c6-translated", "/mode")
+			if text := env.lastSent(); !strings.Contains(text, name) || !strings.Contains(text, desc) {
+				t.Fatalf("mode menu is missing translations: %q", text)
+			}
+
+			// User action 2: select the mode and read the confirmation.
+			env.plat.clearSent()
+			env.userSends("c6-translated", "/mode auto-review")
+			if text := env.lastSent(); !strings.Contains(text, name) {
+				t.Fatalf("mode confirmation is missing translated name: %q", text)
+			}
+
+			// User action 3: reopen the menu and see the selected mode.
+			env.plat.clearSent()
+			env.userSends("c6-translated", "/mode")
+			marker := " (current)"
+			if env.engine.i18n.IsZhLike() {
+				marker = "（当前）"
+			}
+			if text := env.lastSent(); !strings.Contains(text, "**"+name+"**"+marker) {
+				t.Fatalf("selected mode is missing from menu: %q", text)
+			}
+		})
+	}
+}

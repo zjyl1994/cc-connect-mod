@@ -140,9 +140,8 @@ func TestBuildExecArgs_ResumeOmitsCdFlag(t *testing.T) {
 }
 
 // TestBuildExecArgs_ModeMapping verifies each permission mode maps to the
-// correct codex CLI flags. Critical: codex exec has no approval IPC, so
-// approval_policy must always be "never" to avoid hanging on a TTY prompt
-// that this backend cannot answer.
+// correct codex CLI flags. Modes without native auto-review must use "never"
+// because this backend cannot answer human approval prompts.
 func TestBuildExecArgs_ModeMapping(t *testing.T) {
 	tests := []struct {
 		mode           string
@@ -1165,4 +1164,48 @@ func waitForFileLines(t *testing.T, path string, want int) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatalf("timed out waiting for %d lines in %s", want, path)
+}
+
+func TestBuildExecArgs_AutoReviewNewAndResumedSessions(t *testing.T) {
+	for _, resumeID := range []string{"", "thread-auto-review"} {
+		name := "new"
+		if resumeID != "" {
+			name = "resume"
+		}
+		t.Run(name, func(t *testing.T) {
+			cs, err := newCodexSession(
+				context.Background(), "codex", nil, t.TempDir(), "", "",
+				"auto-review", resumeID, "", nil, "", "", "",
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = cs.Close() })
+			args := cs.buildExecArgs("hello", nil)
+			prefix := []string{"exec", "--approve-for-me"}
+			if resumeID != "" {
+				prefix = append(prefix, "resume")
+			}
+			if strings.Join(args[:len(prefix)], " ") != strings.Join(prefix, " ") {
+				t.Fatalf("exec-level auto-review flag must precede resume: %v", args)
+			}
+			for _, config := range []string{
+				`sandbox_mode="workspace-write"`,
+				`approval_policy="on-request"`,
+				`approvals_reviewer="auto_review"`,
+			} {
+				if !containsSequence(args, []string{"-c", config}) {
+					t.Errorf("missing config %s: %v", config, args)
+				}
+			}
+			for _, arg := range args {
+				if arg == `approval_policy="never"` || arg == "--dangerously-bypass-approvals-and-sandbox" {
+					t.Errorf("auto-review disabled by %s: %v", arg, args)
+				}
+			}
+			if resumeID != "" && !containsSequence(args, []string{resumeID, "--json", "-"}) {
+				t.Errorf("resume lost the thread or stdin prompt: %v", args)
+			}
+		})
+	}
 }

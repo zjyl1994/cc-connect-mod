@@ -10609,21 +10609,15 @@ func (e *Engine) cmdMode(p Platform, msg *Message, args []string) {
 						suffix = " (current)"
 					}
 				}
-				if zhLike {
-					sb.WriteString(fmt.Sprintf("**%s**%s — %s\n", m.NameZh, suffix, m.DescZh))
-				} else {
-					sb.WriteString(fmt.Sprintf("**%s**%s — %s\n", m.Name, suffix, m.Desc))
-				}
+				sb.WriteString(fmt.Sprintf("**%s**%s — %s\n",
+					m.LocalizedName(e.i18n), suffix, m.LocalizedDescription(e.i18n)))
 			}
 			sb.WriteString(e.modeUsageText(modes))
 
 			var buttons [][]ButtonOption
 			var row []ButtonOption
 			for _, m := range modes {
-				label := m.Name
-				if zhLike {
-					label = m.NameZh
-				}
+				label := m.LocalizedName(e.i18n)
 				row = append(row, ButtonOption{Text: label, Data: "cmd:/mode " + m.Key})
 				if len(row) >= 2 {
 					buttons = append(buttons, row)
@@ -10651,14 +10645,9 @@ func (e *Engine) cmdMode(p Platform, msg *Message, args []string) {
 
 	modes := switcher.PermissionModes()
 	displayName := newMode
-	zhLike := e.i18n.IsZhLike()
 	for _, m := range modes {
 		if m.Key == newMode {
-			if zhLike {
-				displayName = m.NameZh
-			} else {
-				displayName = m.Name
-			}
+			displayName = m.LocalizedName(e.i18n)
 			break
 		}
 	}
@@ -13763,7 +13752,6 @@ func (e *Engine) renderModeCard() *Card {
 
 	current := switcher.GetMode()
 	modes := switcher.PermissionModes()
-	zhLike := e.i18n.IsZhLike()
 
 	var sb strings.Builder
 	for _, m := range modes {
@@ -13771,20 +13759,14 @@ func (e *Engine) renderModeCard() *Card {
 		if m.Key == current {
 			marker = "▶"
 		}
-		if zhLike {
-			sb.WriteString(fmt.Sprintf("%s **%s** — %s\n", marker, m.NameZh, m.DescZh))
-		} else {
-			sb.WriteString(fmt.Sprintf("%s **%s** — %s\n", marker, m.Name, m.Desc))
-		}
+		sb.WriteString(fmt.Sprintf("%s **%s** — %s\n",
+			marker, m.LocalizedName(e.i18n), m.LocalizedDescription(e.i18n)))
 	}
 
 	var opts []CardSelectOption
 	initVal := ""
 	for _, m := range modes {
-		label := m.Name
-		if zhLike {
-			label = m.NameZh
-		}
+		label := m.LocalizedName(e.i18n)
 		val := "act:/mode " + m.Key
 		opts = append(opts, CardSelectOption{Text: label, Value: val})
 		if m.Key == current {

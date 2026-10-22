@@ -88,10 +88,21 @@ All agents support permission modes switchable at runtime via `/mode`.
 
 | Mode | Config Value | Behavior |
 |------|-------------|----------|
-| Suggest | `suggest` | Only trusted commands run without approval |
-| Auto Edit | `auto-edit` | Model decides when to ask |
-| Full Auto | `full-auto` | Auto-approve with sandbox |
+| Suggest | `suggest` | Read-only sandbox; app_server can ask for human approval, exec cannot escalate |
+| Auto Edit | `auto-edit` | Workspace-write sandbox, no escalation (alias of full-auto) |
+| Full Auto | `full-auto` | Workspace-write sandbox, no escalation |
+| Auto Review | `auto-review` | Workspace-write sandbox with native Codex review of escalation requests |
 | YOLO | `yolo` | Bypass all approvals and sandbox |
+
+Enable native automatic review with a current Codex CLI:
+
+```toml
+[projects.agent.options]
+backend = "app_server" # The default "exec" backend also supports this mode.
+mode = "auto-review"
+```
+
+Restart cc-connect to load the configuration, or send `/mode auto-review` in chat to use it for subsequent requests. New threads, resumed threads, and subsequent turns use the `workspace-write` sandbox, `on-request` approval policy, and `auto_review` reviewer. Actions allowed inside the sandbox run directly; escalation requests go to the native Codex reviewer, which can deny them.
 
 ### Codex CLI discovery on macOS
 

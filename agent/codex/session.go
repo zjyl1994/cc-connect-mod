@@ -281,7 +281,14 @@ func (cs *codexSession) buildExecArgs(prompt string, imagePaths []string) []stri
 	isResume := tid != ""
 
 	var args []string
-	if isResume {
+	if cs.mode == "auto-review" {
+		// This exec-level option must precede resume, which has no such flag.
+		args = []string{"exec", "--approve-for-me"}
+		if isResume {
+			args = append(args, "resume")
+		}
+		args = append(args, "--skip-git-repo-check")
+	} else if isResume {
 		// For resume: codex exec resume ... <thread_id> [--image ...] --json --cd <dir> <prompt>
 		// The codex CLI requires --json after the thread_id positional argument.
 		args = []string{"exec", "resume", "--skip-git-repo-check"}
@@ -291,9 +298,8 @@ func (cs *codexSession) buildExecArgs(prompt string, imagePaths []string) []stri
 
 	// Mode → sandbox + approval mapping.
 	//
-	// `codex exec` (this backend) has no approval IPC, so approval_policy must
-	// always be "never" — otherwise the CLI blocks waiting for a TTY response
-	// that never arrives. Sandbox tier is what actually enforces safety here.
+	// `codex exec` has no human approval IPC. Native auto-review handles its
+	// own approvals; other modes use "never" to avoid unanswered human prompts.
 	//
 	// As of codex-cli 0.137 `--full-auto` is no longer accepted; use the
 	// canonical `--sandbox <mode>` form together with `-c approval_policy=...`.
@@ -310,6 +316,10 @@ func (cs *codexSession) buildExecArgs(prompt string, imagePaths []string) []stri
 	// the `app_server` backend, which handles execCommandApproval /
 	// applyPatchApproval / permissionsApproval over JSON-RPC.
 	switch cs.mode {
+	case "auto-review":
+		// Explicit overrides also replace persisted settings when resuming.
+		args = append(args, "-c", `sandbox_mode="workspace-write"`,
+			"-c", `approval_policy="on-request"`, "-c", `approvals_reviewer="auto_review"`)
 	case "auto-edit", "full-auto":
 		if isResume {
 			args = append(args, "-c", `sandbox_mode="workspace-write"`, "-c", `approval_policy="never"`)
